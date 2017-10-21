@@ -17,7 +17,6 @@ if(!defined('MyConst')) {
    <?php
    die(' Direct access not permitted');
 }
-
 /* Copyright 2012 BrewPi/Elco Jacobs.
  * This file is part of BrewPi.
 
