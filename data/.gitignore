@@ -2,6 +2,7 @@
 *
 # Except this file
 !.gitignore
-!/iSpindel/
+!iSpindel/
+!iSpindel/SpinData.csv
 # Sample data is also ignored, because users can alter it and cause git conflicts.
 # We can still change the sample data by adding it with add -f
