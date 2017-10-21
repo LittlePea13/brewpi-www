@@ -84,7 +84,7 @@ if (!$conn) {
 	}
 ?>
 <style>
-<?php include 'beers.css'; ?>
+<?php include 'css/beers.css'; ?>
 </style>
 <style>
 .beer-details {
