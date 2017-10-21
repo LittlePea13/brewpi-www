@@ -1,4 +1,9 @@
 <?php
+if(!defined('MyConst')) {
+   die('Direct access not permitted');
+}
+?>
+<?php
 /* Copyright 2012 BrewPi/Elco Jacobs.
  * This file is part of BrewPi.
 

@@ -1,113 +1,144 @@
 <?php
-/* Copyright 2012 BrewPi/Elco Jacobs.
- * This file is part of BrewPi.
-
- * BrewPi is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
-
- * BrewPi is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
-
- * You should have received a copy of the GNU General Public License
- * along with BrewPi.  If not, see <http://www.gnu.org/licenses/>.
- */
-
-// load default settings from file
-$defaultSettings = file_get_contents('defaultSettings.json');
-if($defaultSettings == false){
-	die("Cannot open default settings file: defaultSettings.json");
-}
-$settingsArray = json_decode(prepareJSON($defaultSettings), true);
-if(is_null($settingsArray)){
-	die("Cannot decode defaultSettings.json");
-}
-// overwrite default settings with user settings
-if(file_exists('userSettings.json')){
-	$userSettings = file_get_contents('userSettings.json');
-	if($userSettings == false){
-		die("Error opening settings file userSettings.json");
-	}
-	$userSettingsArray = json_decode(prepareJSON($userSettings), true);
-	if(is_null($settingsArray)){
-		die("Cannot decode userSettings.json");
-	}
-	foreach ($userSettingsArray as $key => $value) {
-		$settingsArray[$key] = $userSettingsArray[$key];
-	}
+//ini_set('display_errors', 1);
+session_start();
+$config = parse_ini_file('private/config.ini');
+if(!empty($_POST["login"])) {
+    $conn = mysqli_connect("localhost", $config['username'], $config['password'], $config['dbname']);
+    if (!$conn) {
+    die('Could not connect: ' . mysql_error());
 }
 
-$beerName = $settingsArray["beerName"];
-$tempFormat = $settingsArray["tempFormat"];
-$profileName = $settingsArray["profileName"];
-$dateTimeFormat = $settingsArray["dateTimeFormat"];
-$dateTimeFormatDisplay = $settingsArray["dateTimeFormatDisplay"];
-
-function prepareJSON($input) {
-    //This will convert ASCII/ISO-8859-1 to UTF-8.
-    //Be careful with the third parameter (encoding detect list), because
-    //if set wrong, some input encodings will get garbled (including UTF-8!)
-    $input = mb_convert_encoding($input, 'UTF-8', 'ASCII,UTF-8,ISO-8859-1');
-
-    //Remove UTF-8 BOM if present, json_decode() does not like it.
-    if(substr($input, 0, 3) == pack("CCC", 0xEF, 0xBB, 0xBF)) $input = substr($input, 3);
-
-    return $input;
+    $sql = "Select * from members where member_name = '" . $_POST["member_name"] . "' and member_password = '" . md5($_POST["member_password"]) . "'";
+    $result = mysqli_query($conn,$sql);
+    $user = mysqli_fetch_array($result);
+    if($user) {
+            $_SESSION["member_id"] = $user["member_id"];
+            
+            if(!empty($_POST["remember"])) {
+                setcookie ("member_login",$_POST["member_name"],time()+ (10 * 365 * 24 * 60 * 60));
+                setcookie ("member_password",$_POST["member_password"],time()+ (10 * 365 * 24 * 60 * 60));
+            } else {
+                if(isset($_COOKIE["member_login"])) {
+                    setcookie ("member_login","");
+                }
+                if(isset($_COOKIE["member_password"])) {
+                    setcookie ("member_password","");
+                }
+            }
+    } else {
+        $message = "Invalid Login";
+    }
 }
-
 ?>
-<!DOCTYPE html >
-<html>
-	<head>
-		<meta http-equiv="content-type" content="text/html; charset=utf-8" />
-		<title>BrewPi reporting for duty!</title>
-		<link type="text/css" href="css/redmond/jquery-ui-1.10.3.custom.css" rel="stylesheet" />
-		<link type="text/css" href="css/style.css" rel="stylesheet"/>
-		<link rel="apple-touch-icon" href="touch-icon-iphone.png">
-        <link rel="apple-touch-icon" sizes="76x76" href="touch-icon-ipad.png">
-        <link rel="apple-touch-icon" sizes="120x120" href="touch-icon-iphone-retina.png">
-        <link rel="apple-touch-icon" sizes="152x152" href="touch-icon-ipad-retina.png">
-        <meta name="apple-mobile-web-app-title" content="BrewPi">
-	</head>
-	<body>
-		<div id="beer-panel" class="ui-widget ui-widget-content ui-corner-all">
-			<?php
-				include 'beer-panel.php';
-			?>
-		</div>
-		<div id="control-panel" style="display:none"> <!--// hide while loading -->
-			<?php
-				include 'control-panel.php';
-			?>
-		</div>
-		<div id="maintenance-panel" style="display:none"> <!--// hide while loading -->
-			<?php
-				include 'maintenance-panel.php';
-			?>
-		</div>
-		<!-- Load scripts after the body, so they don't block rendering of the page -->
-		<!-- <script type="text/javascript" src="js/jquery-1.11.0.js"></script> -->
-		<script type="text/javascript" src="js/jquery-1.11.0.min.js"></script>
-		<script type="text/javascript" src="js/jquery-ui-1.10.3.custom.min.js"></script>
-		<script type="text/javascript" src="js/jquery-ui-timepicker-addon.js"></script>
-		<script type="text/javascript" src="js/spin.js"></script>
-		<script type="text/javascript" src="js/dygraph-combined.js"></script>
-		<script type="text/javascript">
-			// pass parameters to JavaScript
-			window.tempFormat = <?php echo "'$tempFormat'" ?>;
-			window.beerName = <?php echo "\"$beerName\""?>;
-			window.profileName = <?php echo "\"$profileName\""?>;
-			window.dateTimeFormat = <?php echo "\"$dateTimeFormat\""?>;
-			window.dateTimeFormatDisplay = <?php echo "\"$dateTimeFormatDisplay\""?>;
-		</script>
-		<script type="text/javascript" src="js/main.js"></script>
-		<script type="text/javascript" src="js/device-config.js"></script>
-		<script type="text/javascript" src="js/control-panel.js"></script>
-		<script type="text/javascript" src="js/maintenance-panel.js"></script>
-		<script type="text/javascript" src="js/beer-chart.js"></script>
-		<script type="text/javascript" src="js/profile-table.js"></script>
-	</body>
-</html>
+<style>
+    #frmLogin {
+        height: 110%;
+        border: 5px solid #f1f1f1;    }
+    .field-group {
+        margin-top:15px;
+    }
+
+    h1{
+        text-align: center;
+    }
+
+    .input-field {
+        width: 100%;
+        padding: 12px 20px;
+        margin: 8px 0;
+        display: inline-block;
+        border: 1px solid #ccc;
+        box-sizing: border-box;
+    }
+    .form-submit-button {
+        background-color: #4CAF50;
+        color: white;
+        padding: 14px 20px;
+        margin: 8px 0;
+        border: none;
+        cursor: pointer;
+        width: 100%;
+    }
+    .form-submit-button:hover {
+        opacity: 0.8;
+    }
+    .member-dashboard {
+        background: #D2EDD5;
+        color: #555;
+        border-radius: 4px;
+        display: inline-block;
+        width: 100%;
+        text-align: end;
+    }
+    .member-dashboard a {
+        color: #09F;
+        text-decoration:none;
+    }
+    .error-message {
+        text-align:center;
+        color:#FF0000;
+    }
+    .imgcontainer {
+        text-align: center;
+        margin: 24px 0 12px 0;
+    }
+
+    img.avatar {
+        width: 30%;
+        border-radius: 50%;
+    }
+    .container {
+        padding: 16px;
+    }
+    a.button {
+        background-color: #af4e4c!important;
+        color: white!important;
+        padding: 14px 20px!important;
+        margin: 8px 0!important;
+        cursor: pointer!important;
+        width: 100%!important;
+        text-align: center!important;
+        display: inline-block!important;
+        box-sizing: border-box!important;
+        text-decoration: unset!important;
+        font: 11px system-ui!important;
+    }
+
+    a.button:hover {
+        opacity: 0.8;
+    }
+
+</style>
+
+<?php if(empty($_SESSION["member_id"])) { ?>
+<form action="" method="post" id="frmLogin">
+    <title>Peace&Hops</title>
+    <h1>Welcome to Peace&Hops!</h1>
+    <div class="imgcontainer">
+        <img src="img_avatar2.png" alt="Avatar" class="avatar">
+    </div>
+<div class="container">
+    <div class="error-message"><?php if(isset($message)) { echo $message; } ?></div>    
+    <div class="field-group">
+        <div><label for="login">Username</label></div>
+        <div><input name="member_name" type="text" value="<?php if(isset($_COOKIE["member_login"])) { echo $_COOKIE["member_login"]; } ?>" class="input-field">
+    </div>
+    <div class="field-group">
+        <div><label for="password">Password</label></div>
+        <div><input name="member_password" type="password" value="<?php if(isset($_COOKIE["member_password"])) { echo $_COOKIE["member_password"]; } ?>" class="input-field"> 
+    </div>
+    <div class="field-group">
+        <div><input type="checkbox" name="remember" id="remember" <?php if(isset($_COOKIE["member_login"])) { ?> checked <?php } ?> />
+        <label for="remember-me">Remember me</label>
+    </div>
+    <div class="field-group">
+        <div><input type="submit" name="login" value="Login" class="form-submit-button"></span></div>
+    </div> 
+    <a href="public.php" class="button" >Public Page</a>
+</div>     
+</form>
+<?php } else { ?>
+<div class="member-dashboard">You have Successfully logged in!.<a href="logout.php">Logout</a></div>
+<?php    
+    include "protected.php";
+} ?>
